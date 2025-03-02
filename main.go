@@ -5,7 +5,8 @@ import (
 )
 
 type CLI struct {
-	Extract Extract `cmd:"" help:"Extract information from a set of images"`
+	Extract  Extract  `cmd:"" help:"Extract information from a set of images"`
+	Organize Organize `cmd:"" help:"Organize a set of images"`
 }
 
 func main() {

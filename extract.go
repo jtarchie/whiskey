@@ -3,13 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"image/jpeg"
 	"log"
 	"os"
-	_ "embed"
 
 	"github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
@@ -18,12 +18,12 @@ import (
 type Extract struct {
 	ApiKey     string   `help:"OpenAI API key"`
 	Endpoint   string   `help:"OpenAI endpoint" default:"" `
-	Filename   []string `arg:"" type:"existingfile" help:"PDF file to rename"`
+	Filename   []string `arg:"" type:"existingfile" help:"Image file to rename"`
 	ImageModel string   `help:"OpenAI image model" default:"llama3.2-vision" required:""`
 }
 
-//go:embed prompt.md
-var prompt string
+//go:embed prompts/extract.md
+var extractPrompt string
 
 func (c *Extract) Run() error {
 	var result BottlesSchema
@@ -32,34 +32,9 @@ func (c *Extract) Run() error {
 		return fmt.Errorf("failed to generate schema: %w", err)
 	}
 
-	var imageMessages []openai.ChatMessagePart
-
-	for _, imagePath := range c.Filename {
-		imageFile, err := os.Open(imagePath)
-		if err != nil {
-			log.Fatalf("Failed to open image file: %v", err)
-		}
-		defer imageFile.Close()
-
-		image, err := jpeg.Decode(imageFile)
-		if err != nil {
-			log.Fatalf("Failed to decode image: %v", err)
-		}
-
-		buffer := &bytes.Buffer{}
-		err = jpeg.Encode(buffer, image, &jpeg.Options{Quality: 100})
-		if err != nil {
-			log.Fatalf("Failed to encode image: %v", err)
-		}
-
-		encodedImage := base64.StdEncoding.EncodeToString(buffer.Bytes())
-		imageMessages = append(imageMessages, openai.ChatMessagePart{
-			Type: "image_url",
-			ImageURL: &openai.ChatMessageImageURL{
-				URL:    "data:image/jpeg;base64," + encodedImage,
-				Detail: openai.ImageURLDetailAuto,
-			},
-		})
+	imageMessages, err := imagesAsMessages(c.Filename)
+	if err != nil {
+		return fmt.Errorf("failed to create image messages: %w", err)
 	}
 
 	config := openai.DefaultConfig(c.ApiKey)
@@ -76,7 +51,7 @@ func (c *Extract) Run() error {
 			Messages: []openai.ChatCompletionMessage{
 				{
 					Role:    "system",
-					Content: prompt,
+					Content: extractPrompt,
 				},
 				{
 					Role: "user",
@@ -111,4 +86,38 @@ func (c *Extract) Run() error {
 	fmt.Println(string(mergedData))
 
 	return nil
+}
+
+func imagesAsMessages(filenames []string) ([]openai.ChatMessagePart, error) {
+	var imageMessages []openai.ChatMessagePart
+
+	for _, imagePath := range filenames {
+		imageFile, err := os.Open(imagePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open image: %w", err)
+		}
+		defer imageFile.Close()
+
+		image, err := jpeg.Decode(imageFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode image: %w", err)
+		}
+
+		buffer := &bytes.Buffer{}
+		err = jpeg.Encode(buffer, image, &jpeg.Options{Quality: 100})
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode image: %w", err)
+		}
+
+		encodedImage := base64.StdEncoding.EncodeToString(buffer.Bytes())
+		imageMessages = append(imageMessages, openai.ChatMessagePart{
+			Type: "image_url",
+			ImageURL: &openai.ChatMessageImageURL{
+				URL:    "data:image/jpeg;base64," + encodedImage,
+				Detail: openai.ImageURLDetailAuto,
+			},
+		})
+	}
+
+	return imageMessages, nil
 }
