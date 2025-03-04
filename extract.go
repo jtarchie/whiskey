@@ -5,7 +5,6 @@ import (
 	"context"
 	_ "embed"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"image/jpeg"
 	"log"
@@ -19,7 +18,7 @@ import (
 type Extract struct {
 	ApiKey     string   `help:"OpenAI API key"`
 	Endpoint   string   `help:"OpenAI endpoint" default:"" `
-	Filename   []string `arg:"" type:"existingfile" help:"Image file to rename"`
+	Filenames   []string `arg:"" type:"existingfile" help:"Image file to rename"`
 	ImageModel string   `help:"OpenAI image model" default:"llama3.2-vision" required:""`
 }
 
@@ -36,61 +35,59 @@ func (c *Extract) Run() error {
 	}
 	slog.Info("generated_json_schema", "schema", schema)
 
-	imageMessages, err := imagesAsMessages(c.Filename)
-	if err != nil {
-		return fmt.Errorf("failed to create image messages: %w", err)
-	}
-	slog.Info("created_image_messages", "count", len(imageMessages))
-
 	config := openai.DefaultConfig(c.ApiKey)
 	if c.Endpoint != "" {
 		config.BaseURL = c.Endpoint
 	}
 	client := openai.NewClientWithConfig(config)
 
-	response, err := client.CreateChatCompletion(
-		context.Background(),
-		openai.ChatCompletionRequest{
-			Model: c.ImageModel,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    "system",
-					Content: extractPrompt,
+	for index, filename := range c.Filenames {
+		slog.Info("processing_file", "filename", filename, "index", index, "total", len(filename))
+
+		imageMessages, err := imagesAsMessages([]string{filename})
+		if err != nil {
+			return fmt.Errorf("failed to create image messages: %w", err)
+		}
+		slog.Info("created_image_messages", "count", len(imageMessages))
+
+		response, err := client.CreateChatCompletion(
+			context.Background(),
+			openai.ChatCompletionRequest{
+				Model: c.ImageModel,
+				Messages: []openai.ChatCompletionMessage{
+					{
+						Role:    "system",
+						Content: extractPrompt,
+					},
+					{
+						Role:         "user",
+						MultiContent: imageMessages,
+					},
 				},
-				{
-					Role:         "user",
-					MultiContent: imageMessages,
+				ResponseFormat: &openai.ChatCompletionResponseFormat{
+					Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
+					JSONSchema: &openai.ChatCompletionResponseFormatJSONSchema{
+						Name:   "bottles_schema",
+						Schema: schema,
+						Strict: true,
+					},
 				},
 			},
-			ResponseFormat: &openai.ChatCompletionResponseFormat{
-				Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
-				JSONSchema: &openai.ChatCompletionResponseFormatJSONSchema{
-					Name:   "bottles_schema",
-					Schema: schema,
-					Strict: true,
-				},
-			},
-		},
-	)
-	if err != nil {
-		log.Fatalf("Failed to process image: %v", err)
-	}
-	slog.Info("received_response_from_openai", "response", response)
+		)
+		if err != nil {
+			log.Fatalf("Failed to process image: %v", err)
+		}
+		slog.Info("received_response_from_openai")
 
-	err = json.Unmarshal([]byte(response.Choices[0].Message.Content), &result)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal response: %w", err)
+		fmt.Println(response.Choices[0].Message.Content)
 	}
-	slog.Info("unmarshaled_response", "result", result)
 
-	mergedBottles := mergeBottles(result.Bottles)
-	mergedData, err := json.MarshalIndent(mergedBottles, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal merged data: %w", err)
-	}
-	slog.Info("merged_bottles_data", "mergedData", string(mergedData))
-
-	fmt.Println(string(mergedData))
+	// mergedBottles := mergeBottles(result.Bottles)
+	// mergedData, err := json.MarshalIndent(mergedBottles, "", "  ")
+	// if err != nil {
+	// 	return fmt.Errorf("failed to marshal merged data: %w", err)
+	// }
+	// slog.Info("merged_bottles_data", "mergedData", string(mergedData))
 
 	slog.Info("extract_run_end")
 	return nil
