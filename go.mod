@@ -7,4 +7,4 @@ require (
 	github.com/sashabaranov/go-openai v1.38.0
 )
 
-require github.com/philippgille/chromem-go v0.7.0 // indirect
+require github.com/philippgille/chromem-go v0.7.0
