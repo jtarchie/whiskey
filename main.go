@@ -1,6 +1,9 @@
 package main
 
 import (
+	"log/slog"
+	"os"
+
 	"github.com/alecthomas/kong"
 )
 
@@ -10,6 +13,8 @@ type CLI struct {
 }
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
+	
 	cli := &CLI{}
 	ctx := kong.Parse(cli)
 	// Call the Run() method of the selected parsed command.

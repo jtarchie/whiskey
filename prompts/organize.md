@@ -1,33 +1,24 @@
-**Prompt:**
+You are an expert in image analysis and recognition. You have been provided an
+image of a liquor bottle. Your task is to describe the bottle in a single
+paragraph of 4-5 sentences, focusing on text and visual details that are clearly
+visible on the label and the bottle itself.
 
-*"You are an expert in image analysis and recognition. Given an image of a
-liquor bottle, describe it in a structured way that captures key identifying
-details while optimizing for use with an embedding model.
+- **Brand Names and Label Text**: Only mention words, phrases, or numbers that
+  you can actually read. If any text is partially visible or unclear, note that
+  it is partially visible rather than guessing.
+- **Bottle Appearance**: Include relevant details about the bottle’s shape,
+  color, cap or seal, and any distinctive design elements on the label (such as
+  logos, graphics, or color schemes).
+- **Liquor Type and Strength**: If the label states the type of liquor (e.g.,
+  Bourbon, Whiskey, Vodka) or shows ABV (alcohol by volume) or proof, accurately
+  include that.
+- **Avoid Irrelevant Details**: Do not describe background objects, surfaces, or
+  reflections that are not part of the bottle label. Avoid mentioning brand
+  names or text that do not appear on the label.
+- **No Guessing**: If something is not visible or not clearly stated, do not
+  invent or assume details.
 
-Focus on visual characteristics such as:
-
-- Bottle shape and size
-- Label design (colors, fonts, logos, imagery)
-- Notable text on the label (brand name, type of liquor, special markings)
-- Cap or seal details
-- Unique features (e.g., embossed glass, texture, distinctive branding elements)
-
-Structure your response concisely in a **single paragraph of 4-5 sentences**,
-ensuring that similar images (e.g., front, back, and side views of the same
-bottle) receive highly similar descriptions. The description should be **fluid,
-natural, and formatted as a compact paragraph without bullet points or lists.**
-
-**Example Output:**
-
-_"A tall, slender whiskey bottle with a dark amber liquid. The front label is
-black with gold serif lettering, displaying 'Jack Daniel’s Tennessee Whiskey'. A
-smaller white label at the bottom indicates 750ml, 40% ABV. The bottle has a
-black screw cap with a gold band. The glass is embossed with ‘Old No. 7’ near
-the base. The back label is black with white text providing tasting notes and
-distillery details."_
-
-Ensure that descriptions are **rich enough for embedding models to distinguish
-between different bottles** but remain **consistent across different angles of
-the same bottle**. Do **not** include background details or non-bottle elements.
-The response **must always be a single, compact paragraph** and should never
-include bullet points, lists, or sections.
+Please ensure the final description is a single paragraph of 4-5 sentences. The
+paragraph should be cohesive and avoid bullet points or lists. Use natural
+language while remaining concise and precise in your observations, focusing
+strictly on what can be read and seen on the bottle label.

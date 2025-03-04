@@ -13,6 +13,7 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
+	"log/slog"
 )
 
 type Extract struct {
@@ -26,19 +27,22 @@ type Extract struct {
 var extractPrompt string
 
 func (c *Extract) Run() error {
+	slog.Info("extract_run_start")
+
 	var result BottlesSchema
 	schema, err := jsonschema.GenerateSchemaForType(result)
 	if err != nil {
 		return fmt.Errorf("failed to generate schema: %w", err)
 	}
+	slog.Info("generated_json_schema", "schema", schema)
 
 	imageMessages, err := imagesAsMessages(c.Filename)
 	if err != nil {
 		return fmt.Errorf("failed to create image messages: %w", err)
 	}
+	slog.Info("created_image_messages", "count", len(imageMessages))
 
 	config := openai.DefaultConfig(c.ApiKey)
-	
 	if c.Endpoint != "" {
 		config.BaseURL = c.Endpoint
 	}
@@ -54,7 +58,7 @@ func (c *Extract) Run() error {
 					Content: extractPrompt,
 				},
 				{
-					Role: "user",
+					Role:         "user",
 					MultiContent: imageMessages,
 				},
 			},
@@ -71,27 +75,35 @@ func (c *Extract) Run() error {
 	if err != nil {
 		log.Fatalf("Failed to process image: %v", err)
 	}
+	slog.Info("received_response_from_openai", "response", response)
 
 	err = json.Unmarshal([]byte(response.Choices[0].Message.Content), &result)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal response: %w", err)
 	}
+	slog.Info("unmarshaled_response", "result", result)
 
 	mergedBottles := mergeBottles(result.Bottles)
 	mergedData, err := json.MarshalIndent(mergedBottles, "", "  ")
 	if err != nil {
-			return fmt.Errorf("failed to marshal merged data: %w", err)
+		return fmt.Errorf("failed to marshal merged data: %w", err)
 	}
+	slog.Info("merged_bottles_data", "mergedData", string(mergedData))
 
 	fmt.Println(string(mergedData))
 
+	slog.Info("extract_run_end")
 	return nil
 }
 
 func imagesAsMessages(filenames []string) ([]openai.ChatMessagePart, error) {
+	slog.Info("images_as_messages_start", "filenames", filenames)
+
 	var imageMessages []openai.ChatMessagePart
 
 	for _, imagePath := range filenames {
+		slog.Info("processing_image", "imagePath", imagePath)
+
 		imageFile, err := os.Open(imagePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open image: %w", err)
@@ -117,7 +129,9 @@ func imagesAsMessages(filenames []string) ([]openai.ChatMessagePart, error) {
 				Detail: openai.ImageURLDetailAuto,
 			},
 		})
+		slog.Info("encoded_image", "encodedImageLength", len(encodedImage))
 	}
 
+	slog.Info("images_as_messages_end", "imageMessagesCount", len(imageMessages))
 	return imageMessages, nil
 }
